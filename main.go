@@ -47,6 +47,7 @@ func triggerWork(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn.WriteMessage(1, msg)
 		hub.broadcast <- msg
 	}
+
 }
 
 func listenForMessages(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -57,16 +58,23 @@ func listenForMessages(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	hub.clients = append(hub.clients, &Client{
+	client := Client{
 		wsConn: conn,
-	})
+	}
+	hub.clients = append(hub.clients, &client)
 	fmt.Println("Client registered. Clients set now:", hub.clients)
+	_, latestMsg, err := conn.ReadMessage()
+	if err != nil {
+		fmt.Println("Error in retrieving the msg. Error:", err.Error())
+		return
+	}
+	client.wsConn.WriteMessage(1, latestMsg)
 }
 
 func broadcastAllIncomingMessages(hub *Hub) {
 	for {
 		msg := <-hub.broadcast
-		fmt.Println("Msg received from broadcast:", msg)
+		fmt.Println("Msg received from broadcast:", string(msg))
 		fmt.Println("Msg will be broadcasted to clients:", hub.clients)
 		for _, client := range hub.clients {
 			client.wsConn.WriteMessage(1, msg)
