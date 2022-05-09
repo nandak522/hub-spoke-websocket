@@ -1,0 +1,25 @@
+<!DOCTYPE html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+</head>
+<body>
+    <button type="button" onClick="javascript:triggerWork();return false;">Trigger Work</button><br/>
+    <a href="/listener" target="_blank">Listen on a new tab</a>
+    <div id="content"></div>
+    <script type="text/javascript">
+        var domain = window.location.host;
+        function triggerWork(){
+            var ws = new WebSocket("ws://" + domain + "/triggerWork");
+            ws.onmessage = function(event) {
+                document.getElementById("content").innerHTML = event.data;
+            };
+            ws.onclose = function(event){
+                document.getElementById("content").innerHTML = "Websocket connection closed. Please reload the page";
+            };
+        };
+    </script>
+</body>
+</html>
