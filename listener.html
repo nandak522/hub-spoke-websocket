@@ -10,14 +10,41 @@
     <div id="content"></div>
     <script type="text/javascript">
         var domain = window.location.host;
-        var ws = new WebSocket("ws://" + domain + "/listen");
-        ws.onmessage = function(event) {
-            console.log("received event:" + event.data);
-            document.getElementById("content").innerHTML = event.data;
-        };
-        ws.onclose = function(event){
-            document.getElementById("content").innerHTML = "Websocket connection closed. Please reload the page";
-        };
+        var clientId = sessionStorage.getItem('clientId');
+        console.log("clientId retrieved from sessionStorage:" + clientId);
+        if (clientId) {
+            var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId);
+            ws.onmessage = function(event) {
+                console.log("received event:" + event.data);
+                document.getElementById("content").innerHTML = event.data;
+            };
+            ws.onclose = function(event){
+                document.getElementById("content").innerHTML = "Websocket connection closed. Please reload the page";
+            };
+        }else{
+            var clientIdRequest = new XMLHttpRequest();
+            clientIdRequest.open("GET", "/generate-client-id", true);
+            clientIdRequest.send();
+            clientIdRequest.onreadystatechange = function(){
+                if (clientIdRequest.readyState === XMLHttpRequest.DONE) {
+                    if (clientIdRequest.status === 200) {
+                        clientId = this.responseText;
+                        sessionStorage.setItem('clientId', clientId);
+                        console.log("Client id is set to:" + clientId);
+                        var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId);
+                        ws.onmessage = function(event) {
+                            console.log("received event:" + event.data);
+                            document.getElementById("content").innerHTML = event.data;
+                        };
+                        ws.onclose = function(event){
+                            document.getElementById("content").innerHTML = "Websocket connection closed. Please reload the page";
+                        };
+                    } else {
+                        alert('There was a problem with generating the client-id request.');
+                    }
+                }
+            };
+        }
     </script>
 </body>
 </html>

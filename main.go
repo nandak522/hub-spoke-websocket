@@ -3,13 +3,15 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
 type Hub struct {
-	clients   []*Client
+	clients   map[string]*Client
 	broadcast chan []byte
 }
 
@@ -30,6 +32,7 @@ func listenerHandler(w http.ResponseWriter, r *http.Request) {
 
 type Client struct {
 	wsConn *websocket.Conn
+	id     string
 }
 
 func triggerWork(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -47,7 +50,10 @@ func triggerWork(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		conn.WriteMessage(1, msg)
 		hub.broadcast <- msg
 	}
+}
 
+func generateClientIdHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(uuid.New().String()))
 }
 
 func listenForMessages(hub *Hub, w http.ResponseWriter, r *http.Request) {
@@ -58,11 +64,27 @@ func listenForMessages(hub *Hub, w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	client := Client{
-		wsConn: conn,
+	clientId := strings.Trim(r.URL.Query().Get("clientId"), " ")
+	fmt.Println("clientId:", clientId)
+	if clientId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
-	hub.clients = append(hub.clients, &client)
-	fmt.Println("Client registered. Clients set now:", hub.clients)
+
+	var client Client
+	if _, ok := hub.clients[clientId]; ok {
+		client = *(hub.clients[clientId])
+		fmt.Println("Client already present. Clients set now:", hub.clients)
+	} else {
+		client = Client{
+			wsConn: conn,
+			id:     clientId,
+		}
+
+		hub.clients[clientId] = &client
+		fmt.Println("Client registered freshly. Clients set now:", hub.clients)
+	}
+
 	_, latestMsg, err := conn.ReadMessage()
 	if err != nil {
 		fmt.Println("Error in retrieving the msg. Error:", err.Error())
@@ -85,8 +107,10 @@ func broadcastAllIncomingMessages(hub *Hub) {
 func main() {
 	hub := Hub{
 		broadcast: make(chan []byte),
+		clients:   make(map[string]*Client),
 	}
 	http.HandleFunc("/", homepageHandler)
+	http.HandleFunc("/generate-client-id", generateClientIdHandler)
 	http.HandleFunc("/triggerWork", func(w http.ResponseWriter, r *http.Request) {
 		triggerWork(&hub, w, r)
 	})
