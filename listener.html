@@ -11,9 +11,11 @@
     <script type="text/javascript">
         var domain = window.location.host;
         var clientId = sessionStorage.getItem('clientId');
+        var topic = new URLSearchParams(location.search).get('topic');
+        console.log("would listen to topic: " + topic);
         console.log("clientId retrieved from sessionStorage:" + clientId);
         if (clientId) {
-            var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId);
+            var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId+"&topic="+topic);
             ws.onmessage = function(event) {
                 console.log("received event:" + event.data);
                 document.getElementById("content").innerHTML = event.data;
@@ -31,13 +33,13 @@
                         clientId = this.responseText;
                         sessionStorage.setItem('clientId', clientId);
                         console.log("Client id is set to:" + clientId);
-                        var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId);
+                        var ws = new WebSocket("ws://" + domain + "/listen?clientId=" + clientId+"&topic="+topic);
                         ws.onmessage = function(event) {
                             console.log("received event:" + event.data);
-                            document.getElementById("content").innerHTML = event.data;
+                            document.getElementById("content").innerHTML += event.data+"<br/>";
                         };
                         ws.onclose = function(event){
-                            document.getElementById("content").innerHTML = "Websocket connection closed. Please reload the page";
+                            document.getElementById("content").innerHTML += "Websocket connection closed. Please reload the page";
                         };
                     } else {
                         alert('There was a problem with generating the client-id request.');
